@@ -1,94 +1,114 @@
-import os.path
+SPRAVOCHNIK_FILE: str = 'spravochnik.txt'
 
 
-def request_valid(rec: str) -> bool:
-    """Проверка валидности введённых данных. Все поля должны быть заполнены"""
-    return rec.count(',') == 5
+def load_spravochnik() -> list[list[str]]:
+    """
+    Загружает данные справочника из файла и возвращает их в виде списка списков строк.
+    Если файл пустой, выводит сообщение об этом.
+    """
+    spravochnik = []
+    try:
+        with open(SPRAVOCHNIK_FILE, 'r') as file:
+            for line in file:
+                entry = line.strip().split(';')
+                spravochnik.append(entry)
+    except IOError:
+        print("Файл справочника пустой. Добавьте новую запись.")
+    return spravochnik
 
 
-def print_records(file_name: str):
-    """Вывод всех записей базы данных"""
-    with open(file_name, encoding='UTF-8') as f:
-        data = f.read()
-        if not data:
-            print('Список пустой. Добавьте первую запись.')
-        print(data)
+def save_spravochnik(spravochnik: list[list[str]]) -> None:
+    """
+    Сохраняет данные справочника из списка списков строк в файл.
+    """
+    with open(SPRAVOCHNIK_FILE, 'w') as file:
+        for entry in spravochnik:
+            line = ';'.join(entry)
+            file.write(line + '\n')
 
 
-def search(rec: str, file_name: str) -> list:
-    """Поиск записей по ключевым словам"""
-    rec = [v.strip() for v in rec.split(', ')]
-    with open(file_name, 'r', encoding='UTF-8') as f:
-        matches = []
-        matches = [data for data in f.readlines() if all(item in data for item in rec) and data not in matches]
-        return matches if matches else ['Ничего не найдено']
+def display_page(page: int, page_size: int) -> None:
+    """
+    Выводит информацию из справочника постранично на основе номера страницы
+    и размера страницы.
+    """
+    spravochnik = load_spravochnik()
+    start_index = (page - 1) * page_size
+    end_index = start_index + page_size
+    page_data = spravochnik[start_index:end_index]
+    for entry in page_data:
+        print(f"Фамилия: {entry[0]}")
+        print(f"Имя: {entry[1]}")
+        print(f"Отчество: {entry[2]}")
+        print(f"Организация: {entry[3]}")
+        print(f"Рабочий телефон: {entry[4]}")
+        print(f"Личный телефон: {entry[5]}")
+        print()
 
 
-def add_record(rec: str, file_name: str):
-    """Добавление новой записи"""
-    if search(rec, file_name)[0] == rec + '\n':
-        print('Такая запись в базе данных уже есть')
-    else:
-        with open(file_name, 'a+', encoding='UTF-8') as f:
-            f.write(rec + '\n')
-            print('Запись успешно добавлена')
+def add_entry() -> None:
+    """
+    Добавляет новую запись в справочник на основе введенных пользователем
+    данных.
+    """
+    spravochnik = load_spravochnik()
+    entry = []
+    entry.append(input("Введите фамилию: "))
+    entry.append(input("Введите имя: "))
+    entry.append(input("Введите отчество: "))
+    entry.append(input("Введите название организации: "))
+    entry.append(input("Введите рабочий телефон: "))
+    entry.append(input("Введите личный телефон: "))
+    spravochnik.append(entry)
+    save_spravochnik(spravochnik)
+    print("Запись успешно добавлена!")
 
 
-def edit_record(rec: list, file_name: str):
-    """Редактирование записи"""
-    print(f'Будет отредактирована запись: {rec}')
-    new_rec = input('Введите новые данные:' + '\n')
-    if request_valid(new_rec):
-        with open(file_name, 'r', encoding='UTF-8') as f:
-            old_data = f.read()
-        new_data = old_data.replace(rec, new_rec)
-        with open(file_name, 'w', encoding='UTF-8') as f:
-            f.write(new_data)
-            print('Запись успешно отредактирована')
-    else:
-        print('Проверьте правильность введенных данных')
+def edit_entry() -> None:
+    """
+    Редактирует существующую запись в справочнике на основе введенных
+    пользователем данных.
+    """
+    spravochnik = load_spravochnik()
+    entry_index = int(input("Введите индекс записи, которую хотите "
+                            "отредактировать: "))
+    if entry_index < 0 or entry_index >= len(spravochnik):
+        print("Неверный индекс записи!")
+        return
+    entry = spravochnik[entry_index]
+    entry[0] = input("Введите фамилию: ")
+    entry[1] = input("Введите имя: ")
+    entry[2] = input("Введите отчество: ")
+    entry[3] = input("Введите название организации: ")
+    entry[4] = input("Введите рабочий телефон: ")
+    entry[5] = input("Введите личный телефон: ")
+    save_spravochnik(spravochnik)
+    print("Запись успешно отредактирована!")
 
 
-file = input('Введите название файла с расширением: \n')
-if not os.path.isfile(file):
-    f = open(file, "x")
-    f.close
-
-action = input("""Что вы хотите сделать?
-    1 - Вывести все записи на экран
-    2 - Добавить новую запись
-    3 - Редактировать существующую запись
-    4 - Поиск записей по одной или нескольким характеристикам\n""")
-
-if not action.isdigit() or int(action) not in range(1, 5):
-    print('Пожалуйста, введите число от 1 до 4')
-
-elif action == '1':
-    print_records(file)
-elif action == '2':
-    person = input("""Введите данные через запятую в формате:
-    фамилия, имя, отчество, название организации, телефон рабочий, телефон личный (сотовый)\n""")
-    if request_valid(person):
-        add_record(person, file)
-    else:
-        print('Проверьте правильность введенных данных')
-
-elif action == '3':
-    record = input('Какую запись хотите редактировать? Введите строку целиком или ключевые слова для поиска:\n')
-    result = search(record, file)
-    if result == ['Ничего не найдено']:
-        print('Ничего не найдено')
-    elif len(result) == 1:
-        edit_record(record, file)
-    else:
-        for i in range(len(result)):
-            print(i + 1, result[i].rstrip('\n'))
-        usr_choice = int(input('Какую запись хотите отредактировать? Введите номер:\n'))
-        edit_record(result[usr_choice - 1], file)
+def main() -> None:
+    """
+    Основная функция программы для взаимодействия с пользователем.
+    """
+    while True:
+        print("1. Вывод постранично записей из справочника")
+        print("2. Добавление новой записи в справочник")
+        print("3. Редактирование записей в справочнике")
+        print("0. Выход")
+        choice = input("Выберите действие: ")
+        if choice == '1':
+            page = int(input("Введите номер страницы: "))
+            page_size = int(input("Введите размер страницы: "))
+            display_page(page, page_size)
+        elif choice == '2':
+            add_entry()
+        elif choice == '3':
+            edit_entry()
+        elif choice == '0':
+            break
+        else:
+            print("Неверный выбор!")
 
 
-elif action == '4':
-    words = input('Введите ключевые слова для поиска: \n').strip()
-    result = (search(words, file))
-    for i in result:
-        print(i.rstrip('\n'))
+if __name__ == '__main__':
+    main()
